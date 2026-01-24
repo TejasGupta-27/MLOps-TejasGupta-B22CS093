@@ -179,4 +179,4 @@ Sample training curves are available in the Kaggle notebooks.
 
 ---
 
-**Report:** [B22CS093_TejasGupta_Ass1.pdf](Report/B22CS093_TejasGupta_Ass1.pdf)
+**Report:** [B22CS093_TejasGupta_Ass1.pdf](report/B22CS093_TejasGupta_Ass1.pdf)

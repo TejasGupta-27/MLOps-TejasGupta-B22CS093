@@ -1,0 +1,15 @@
+Dataset,Kernel,Config,Test Accuracy (%),Train Time (ms)
+MNIST,poly,"kernel=poly, degree=2, C=1.0",95.69,4808.808088302612
+MNIST,poly,"kernel=poly, degree=3, C=1.0",95.15,3654.251337051392
+MNIST,poly,"kernel=poly, degree=4, C=1.0",93.53,4407.838344573975
+MNIST,rbf,"kernel=rbf, gamma=scale, C=1.0",95.94,4511.965274810791
+MNIST,rbf,"kernel=rbf, gamma=auto, C=1.0",92.13,6359.335899353027
+MNIST,rbf,"kernel=rbf, gamma=0.01, C=1.0",95.33,4209.302663803101
+MNIST,rbf,"kernel=rbf, gamma=scale, C=10.0",96.84,3057.9047203063965
+FashionMNIST,poly,"kernel=poly, degree=2, C=1.0",83.78,3062.3488426208496
+FashionMNIST,poly,"kernel=poly, degree=3, C=1.0",81.66,4770.225763320923
+FashionMNIST,poly,"kernel=poly, degree=4, C=1.0",79.55,3673.910140991211
+FashionMNIST,rbf,"kernel=rbf, gamma=scale, C=1.0",85.31,4021.252632141113
+FashionMNIST,rbf,"kernel=rbf, gamma=auto, C=1.0",80.9,4672.417879104614
+FashionMNIST,rbf,"kernel=rbf, gamma=0.01, C=1.0",85.31,3588.888168334961
+FashionMNIST,rbf,"kernel=rbf, gamma=scale, C=10.0",86.67,3598.219633102417

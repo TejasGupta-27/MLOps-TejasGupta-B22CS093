@@ -1,0 +1,141 @@
+---
+# ═══════════════════════════════════════════════════════════════════════════
+# DATA CONTRACT: FinTech Transaction Log
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# NEGOTIATION SUMMARY
+# ───────────────────
+# Producer: Core Banking Systems Team
+# Consumer: Fraud Detection Team
+#
+# Agreed Terms:
+#   - Account IDs must be exactly 10 uppercase alphanumeric characters
+#   - Legacy system upgrade produced 8-char IDs causing silent fraud
+#     model lookup failures; regex validation now enforced
+#   - HARD CIRCUIT BREAKER on account ID format: any violation blocks
+#     the pipeline entirely — missing a fraudulent transaction is
+#     unacceptable
+#   - Real-time freshness required for fraud detection
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+dataContractSpecification: 0.9.3
+id: urn:datacontract:fintech:transaction-log
+version: 1.0.0
+
+
+# ───────────────────────────────────────────────────────────────────────────
+# 1. OWNERSHIP & GOVERNANCE
+# ───────────────────────────────────────────────────────────────────────────
+info:
+  title: "FinTech Transaction Log"
+  description: |
+    Real-time transaction records for the bank's fraud detection system.
+    Contains source and destination account IDs and transaction timestamps.
+    Account IDs must be exactly 10 uppercase alphanumeric characters;
+    malformed IDs cause silent fraud model lookup failures.
+  owner: "Core Banking Systems Team"
+  contact:
+    name: "Banking Platform Lead"
+    email: "banking-platform@bank.com"
+    slack: "#transaction-data"
+  classification: restricted
+  tags: [fintech, transactions, fraud-detection, banking, compliance]
+
+
+# ───────────────────────────────────────────────────────────────────────────
+# 2. SCHEMA DEFINITION (Logical Contract)
+# ───────────────────────────────────────────────────────────────────────────
+schema:
+  type: object
+  properties:
+
+    account_source_id:
+      type: string
+      pattern: "^[A-Z0-9]{10}$"
+      description: |
+        Source account identifier. Must be exactly 10 characters,
+        uppercase letters (A-Z) and digits (0-9) only.
+        Examples: ABCD123456, 1234567890, A1B2C3D4E5
+      pii: false
+      # physical_mapping: acct_src
+
+    account_destination_id:
+      type: string
+      pattern: "^[A-Z0-9]{10}$"
+      description: |
+        Destination account identifier. Must be exactly 10 characters,
+        uppercase letters (A-Z) and digits (0-9) only.
+      pii: false
+      # physical_mapping: acct_dest
+
+    transaction_timestamp:
+      type: string
+      format: date-time
+      description: "UTC timestamp when the transaction occurred"
+      pii: false
+      # physical_mapping: tx_ts
+
+  required:
+    - account_source_id
+    - account_destination_id
+    - transaction_timestamp
+
+
+# ───────────────────────────────────────────────────────────────────────────
+# 3. SERVICE LEVEL AGREEMENTS (SLAs)
+# ───────────────────────────────────────────────────────────────────────────
+sla:
+  freshness:
+    threshold: "30 seconds"
+    description: "Near real-time required for fraud detection"
+  availability:
+    percentage: "99.99%"
+    description: "Critical financial system; high availability mandatory"
+  retention:
+    period: "7 years"
+    description: "Retained per financial regulatory requirements"
+
+
+# ───────────────────────────────────────────────────────────────────────────
+# 4. DATA QUALITY RULES
+# ───────────────────────────────────────────────────────────────────────────
+quality:
+
+  # HARD CIRCUIT BREAKER: Any violation blocks the pipeline entirely.
+  # Rationale: Malformed account IDs cause the fraud model to silently
+  # fail lookups, potentially missing fraudulent transactions.
+  - name: account_source_id_format
+    type: validity
+    expression: "REGEXP_LIKE(account_source_id, '^[A-Z0-9]{10}$')"
+    threshold: "100%"
+    enforcement: hard
+    description: |
+      HARD CIRCUIT BREAKER — Source account ID must be
+      exactly 10 uppercase alphanumeric characters.
+      Pipeline is blocked on any violation.
+
+  - name: account_destination_id_format
+    type: validity
+    expression: "REGEXP_LIKE(account_destination_id, '^[A-Z0-9]{10}$')"
+    threshold: "100%"
+    enforcement: hard
+    description: |
+      HARD CIRCUIT BREAKER — Destination account ID must
+      be exactly 10 uppercase alphanumeric characters.
+      Pipeline is blocked on any violation.
+
+
+# ───────────────────────────────────────────────────────────────────────────
+# 5. LINEAGE & CONSUMERS
+# ───────────────────────────────────────────────────────────────────────────
+lineage:
+  sources:
+    - name: core_banking_system
+      type: database
+      table: tx_log
+      description: "Core banking transaction log"
+  consumers:
+    - name: fraud-detection-model
+      team: fraud-detection
+      usage: "Real-time fraud scoring and suspicious activity flagging"

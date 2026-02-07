@@ -1,0 +1,141 @@
+---
+# ═══════════════════════════════════════════════════════════════════════════
+# DATA CONTRACT: Smart Thermostat Fleet Telemetry
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# NEGOTIATION SUMMARY
+# ───────────────────
+# Producer: IoT Platform Team
+# Consumer: Home Analytics Team
+#
+# Agreed Terms:
+#   - Temperature readings must be within -30 to 60 celsius inclusive
+#     to filter out 9999 default values from failed sensors
+#   - Battery level must be 0.0 to 1.0 inclusive; values outside this
+#     range (e.g., 1.5, -0.2) indicate sensor malfunction
+#   - Hard enforcement on both rules to prevent report skew
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+dataContractSpecification: 0.9.3
+id: urn:datacontract:iot:smart-thermostat-fleet
+version: 1.0.0
+
+
+# ───────────────────────────────────────────────────────────────────────────
+# 1. OWNERSHIP & GOVERNANCE
+# ───────────────────────────────────────────────────────────────────────────
+info:
+  title: "Smart Thermostat Fleet Telemetry"
+  description: |
+    Temperature and battery telemetry from a fleet of
+    10,000 smart thermostats.
+    Data is sent every minute per device. Used for the
+    Average Home Temperature report. Sensor failures can
+    produce out-of-range values that must be filtered.
+  owner: "IoT Platform Team"
+  contact:
+    name: "IoT Platform Lead"
+    email: "iot-platform@company.com"
+    slack: "#iot-data"
+  classification: internal
+  tags: [iot, thermostat, temperature, telemetry, sensors]
+
+
+# ───────────────────────────────────────────────────────────────────────────
+# 2. SCHEMA DEFINITION (Logical Contract)
+# ───────────────────────────────────────────────────────────────────────────
+schema:
+  type: object
+  properties:
+
+    device_id:
+      type: string
+      description: "Unique identifier for the thermostat device"
+      pii: false
+      # physical_mapping: dev_id
+
+    temperature_celsius:
+      type: number
+      minimum: -30
+      maximum: 60
+      description: |
+        Temperature reading in degrees Celsius.
+        Valid range: -30 to 60 inclusive.
+        Failed sensors default to 9999 which must be rejected.
+      pii: false
+      # physical_mapping: temp_c
+
+    battery_level:
+      type: number
+      minimum: 0.0
+      maximum: 1.0
+      description: |
+        Battery charge level as a decimal fraction.
+        0.0 = dead battery, 1.0 = full charge.
+        Valid range: 0.0 to 1.0 inclusive.
+        Values outside this range indicate sensor malfunction.
+      pii: false
+      # physical_mapping: batt_lvl
+
+  required:
+    - device_id
+    - temperature_celsius
+    - battery_level
+
+
+# ───────────────────────────────────────────────────────────────────────────
+# 3. SERVICE LEVEL AGREEMENTS (SLAs)
+# ───────────────────────────────────────────────────────────────────────────
+sla:
+  freshness:
+    threshold: "2 minutes"
+    description: |
+      Devices report every minute; data should be
+      available within 2 minutes.
+  availability:
+    percentage: "99.5%"
+    description: "Allows for minor network disruptions in IoT fleet"
+  retention:
+    period: "1 year"
+    description: "Historical temperature data retained for seasonal analysis"
+
+
+# ───────────────────────────────────────────────────────────────────────────
+# 4. DATA QUALITY RULES
+# ───────────────────────────────────────────────────────────────────────────
+quality:
+
+  - name: temperature_range_check
+    type: validity
+    expression: "temperature_celsius >= -30 AND temperature_celsius <= 60"
+    threshold: "100%"
+    enforcement: hard
+    description: |
+      Temperature must be between -30 and 60 celsius
+      inclusive. Rejects sensor default values like
+      9999 that skew the average.
+
+  - name: battery_level_range_check
+    type: validity
+    expression: "battery_level >= 0.0 AND battery_level <= 1.0"
+    threshold: "100%"
+    enforcement: hard
+    description: |
+      Battery level must be between 0.0 and 1.0
+      inclusive. Values outside this range indicate
+      sensor malfunction.
+
+
+# ───────────────────────────────────────────────────────────────────────────
+# 5. LINEAGE & CONSUMERS
+# ───────────────────────────────────────────────────────────────────────────
+lineage:
+  sources:
+    - name: thermostat_ingestion
+      type: json_stream
+      description: "JSON payloads from 10,000 smart thermostats via MQTT"
+  consumers:
+    - name: average-home-temperature-report
+      team: home-analytics
+      usage: "Daily and weekly average home temperature reporting"

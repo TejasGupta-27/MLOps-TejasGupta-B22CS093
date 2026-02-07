@@ -1,0 +1,129 @@
+---
+# ═══════════════════════════════════════════════════════════════════════════
+# DATA CONTRACT: Flash Sale Order Stream
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# NEGOTIATION SUMMARY
+# ───────────────────
+# Producer: E-commerce Backend Team
+# Consumer: Marketing Dashboard Team
+#
+# Agreed Terms:
+#   - Order totals must never be negative (last Black Friday bug fix)
+#   - Physical status_code integers mapped to logical string enum
+#     (2=PAID, 5=SHIPPED, 9=CANCELLED)
+#   - Any unmapped status_code (e.g., 7) must be rejected to prevent
+#     dashboard crashes from unhandled values
+#   - Real-time freshness required for dynamic ad spend adjustment
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+dataContractSpecification: 0.9.3
+id: urn:datacontract:ecommerce:flash-sale-orders
+version: 1.0.0
+
+
+# ───────────────────────────────────────────────────────────────────────────
+# 1. OWNERSHIP & GOVERNANCE
+# ───────────────────────────────────────────────────────────────────────────
+info:
+  title: "Flash Sale Order Stream"
+  description: |
+    Real-time order feed for Black Friday and flash sale events.
+    Used by the Marketing Dashboard to dynamically adjust ad spend.
+    Status codes are mapped from integers to human-readable strings.
+  owner: "E-commerce Backend Team"
+  contact:
+    name: "Backend Engineering Lead"
+    email: "backend-eng@company.com"
+    slack: "#ecommerce-data"
+  classification: internal
+  tags: [orders, ecommerce, marketing, real-time, flash-sale]
+
+
+# ───────────────────────────────────────────────────────────────────────────
+# 2. SCHEMA DEFINITION (Logical Contract)
+# ───────────────────────────────────────────────────────────────────────────
+schema:
+  type: object
+  properties:
+
+    order_total_usd:
+      type: number
+      minimum: 0
+      description: |
+        Total order amount in USD. Must be >= 0.
+        Negative values indicate a bug and must be rejected.
+      pii: false
+      # physical_mapping: o_total
+
+    status:
+      type: string
+      enum: [PAID, SHIPPED, CANCELLED]
+      description: |
+        Order status as a human-readable string.
+        Mapped from physical status_code: 2=PAID, 5=SHIPPED, 9=CANCELLED.
+        Any unmapped code (e.g., 7) is rejected at the contract layer.
+      pii: false
+      # physical_mapping: status_code (int: 2, 5, 9)
+
+  required:
+    - order_total_usd
+    - status
+
+
+# ───────────────────────────────────────────────────────────────────────────
+# 3. SERVICE LEVEL AGREEMENTS (SLAs)
+# ───────────────────────────────────────────────────────────────────────────
+sla:
+  freshness:
+    threshold: "1 minute"
+    description: |
+      Real-time feed required for dynamic ad spend
+      adjustment during flash sales.
+  availability:
+    percentage: "99.9%"
+    description: "Critical during Black Friday and flash sale events"
+  retention:
+    period: "1 year"
+    description: "Order data retained for annual sales analysis"
+
+
+# ───────────────────────────────────────────────────────────────────────────
+# 4. DATA QUALITY RULES
+# ───────────────────────────────────────────────────────────────────────────
+quality:
+
+  - name: order_total_non_negative
+    type: validity
+    expression: "order_total_usd >= 0"
+    threshold: "100%"
+    enforcement: hard
+    description: |
+      Order total must never be negative. Prevents repeat
+      of last year's negative total bug.
+
+  - name: status_valid_enum
+    type: validity
+    expression: "status IN ('PAID', 'SHIPPED', 'CANCELLED')"
+    threshold: "100%"
+    enforcement: hard
+    description: |
+      Only mapped status values are accepted. Unmapped
+      status codes (anything other than 2, 5, 9) are
+      rejected to prevent dashboard crashes.
+
+
+# ───────────────────────────────────────────────────────────────────────────
+# 5. LINEAGE & CONSUMERS
+# ───────────────────────────────────────────────────────────────────────────
+lineage:
+  sources:
+    - name: ecommerce_db
+      type: database
+      table: orders_raw
+      description: "E-commerce operational database"
+  consumers:
+    - name: marketing-dashboard
+      team: marketing
+      usage: "Real-time ad spend adjustment during flash sale events"

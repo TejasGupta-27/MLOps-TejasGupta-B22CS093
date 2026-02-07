@@ -1,0 +1,181 @@
+---
+# ═══════════════════════════════════════════════════════════════════════════
+# DATA CONTRACT: CityMove Ride Data
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# NEGOTIATION SUMMARY
+# ───────────────────
+# Producer: Data Engineering Team (data-eng@citymove.com)
+# Consumer: Dynamic Pricing ML Team (ml-pricing@citymove.com)
+#
+# Agreed Terms:
+#   - Producer commits to 30-minute freshness (ML model retrains hourly)
+#   - All cryptic DB column names mapped to business-friendly logical names
+#   - fare_final must never be negative; hard circuit breaker enforced
+#     to prevent bad data from reaching the pricing model
+#   - Driver rating constrained to 1.0–5.0; out-of-range values rejected
+#   - Distance must not be null; completeness enforced at 100%
+#   - Passenger ID flagged as PII; consumers must handle accordingly
+#
+# Trade-offs:
+#   - ML team accepted 30-min latency (instead of real-time) to reduce
+#     infrastructure cost, since the model only retrains hourly
+#   - Hard enforcement on all quality rules was agreed upon after the
+#     cost_total -> fare_final rename incident caused a 4-hour outage
+#     and $50,000 in losses. This contract decouples the physical schema
+#     from consumer expectations to prevent similar breakages.
+#
+# Signed off: 2024-01-15 by Data Eng Lead + ML Team Lead
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+dataContractSpecification: 0.9.3
+id: urn:datacontract:citymove:ride-data
+version: 1.0.0
+
+
+# ───────────────────────────────────────────────────────────────────────────
+# 1. OWNERSHIP & GOVERNANCE
+# ───────────────────────────────────────────────────────────────────────────
+info:
+  title: "CityMove Ride Data"
+  description: |
+    Ride event records from the CityMove ride-sharing platform.
+    Contains pickup timestamps, fare amounts, distances, driver ratings,
+    and passenger identifiers. Primary consumer is the Dynamic Pricing
+    Algorithm which retrains hourly.
+    WARNING: Contains PII (passenger_id). Handle per data privacy policy.
+  owner: "Data Engineering Team"
+  contact:
+    name: "Data Engineering Lead"
+    email: "data-eng@citymove.com"
+    slack: "#data-platform"
+  classification: confidential
+  tags: [rides, pricing, ml, pii, transportation]
+
+
+# ───────────────────────────────────────────────────────────────────────────
+# 2. SCHEMA DEFINITION (Logical Contract)
+# ───────────────────────────────────────────────────────────────────────────
+schema:
+  type: object
+  properties:
+
+    ride_id:
+      type: string
+      description: "Unique identifier for each ride"
+      pii: false
+      # physical_mapping: r_id
+
+    pickup_timestamp:
+      type: string
+      format: date-time
+      description: "UTC timestamp when the passenger was picked up"
+      pii: false
+      # physical_mapping: ts_start
+
+    passenger_id:
+      type: integer
+      description: |
+        Unique identifier for the passenger.
+        This field is PII and must be handled per data privacy policy.
+      pii: true
+      # physical_mapping: pax_id
+
+    driver_rating:
+      type: number
+      minimum: 1.0
+      maximum: 5.0
+      description: "Driver's rating on a scale of 1.0 to 5.0 inclusive"
+      pii: false
+      # physical_mapping: d_rating
+
+    fare_usd:
+      type: number
+      minimum: 0
+      description: "Total fare for the ride in USD. Must not be negative."
+      pii: false
+      # physical_mapping: fare_final
+
+    distance_meters:
+      type: integer
+      description: "Total distance traveled during the ride in meters"
+      pii: false
+      # physical_mapping: dist_m
+
+  required:
+    - ride_id
+    - pickup_timestamp
+    - passenger_id
+    - driver_rating
+    - fare_usd
+    - distance_meters
+
+
+# ───────────────────────────────────────────────────────────────────────────
+# 3. SERVICE LEVEL AGREEMENTS (SLAs)
+# ───────────────────────────────────────────────────────────────────────────
+sla:
+  freshness:
+    threshold: "30 minutes"
+    description: |
+      Data must be available within 30 minutes of ride
+      completion to support hourly model retraining.
+  availability:
+    percentage: "99.9%"
+    description: "High availability required for ML pipeline"
+  retention:
+    period: "2 years"
+    description: "Ride history retained for model training and audit purposes"
+
+
+# ───────────────────────────────────────────────────────────────────────────
+# 4. DATA QUALITY RULES
+# ───────────────────────────────────────────────────────────────────────────
+quality:
+
+  - name: ride_id_unique
+    type: uniqueness
+    column: ride_id
+    threshold: "100%"
+    enforcement: hard
+    description: "Each ride must have a unique identifier"
+
+  - name: fare_non_negative
+    type: validity
+    expression: "fare_usd >= 0"
+    threshold: "100%"
+    enforcement: hard
+    description: |
+      Fare must never be negative. Circuit breaker: blocks
+      pipeline if violated (e.g., fare_final = -5.00) to
+      prevent bad data from breaking the ML model.
+
+  - name: driver_rating_range
+    type: validity
+    expression: "driver_rating >= 1.0 AND driver_rating <= 5.0"
+    threshold: "100%"
+    enforcement: hard
+    description: "Driver rating must be between 1.0 and 5.0 inclusive"
+
+  - name: distance_not_null
+    type: completeness
+    column: distance_meters
+    threshold: "100%"
+    enforcement: hard
+    description: "Distance must not be null for any ride record"
+
+
+# ───────────────────────────────────────────────────────────────────────────
+# 5. LINEAGE & CONSUMERS
+# ───────────────────────────────────────────────────────────────────────────
+lineage:
+  sources:
+    - name: citymove_ops_db
+      type: postgresql
+      table: raw_rides_log_v2
+      description: "Operational PostgreSQL database containing raw ride logs"
+  consumers:
+    - name: dynamic-pricing-algorithm
+      team: ml-pricing
+      usage: "Hourly model retraining for surge pricing and fare estimation"

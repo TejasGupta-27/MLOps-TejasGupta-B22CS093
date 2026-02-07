@@ -152,6 +152,30 @@
 
                 <a href="https://github.com/TejasGupta-27/MLOps-TejasGupta-B22CS093/blob/Assignment1/report/B22CS093_TejasGupta_Ass1.pdf" class="btn" target="_blank">View Report (PDF)</a>
             </div>
+
+            <div class="assignment">
+                <h3>Assignment 2: Data Contracts & YAML</h3>
+                <p>Authored four data contracts in YAML format covering ride-sharing, e-commerce, IoT, and FinTech domains. Focused on data quality governance, schema validation, PII tagging, SLA definitions, and circuit breaker enforcement patterns.</p>
+
+                <div class="results">
+                    <h4>Contracts Delivered</h4>
+                    <ul>
+                        <li><strong>Ride-Share:</strong> Logical column mapping, fare/rating/distance quality rules, PII tagging, 30-min SLA</li>
+                        <li><strong>E-commerce:</strong> Non-negative order totals, status code enum mapping, unmapped code rejection</li>
+                        <li><strong>IoT Thermostat:</strong> Temperature range (-30 to 60), battery level (0.0 to 1.0) validation</li>
+                        <li><strong>FinTech:</strong> Regex pattern for 10-char account IDs, hard circuit breaker enforcement</li>
+                    </ul>
+                </div>
+
+                <div class="learnings">
+                    <h4>Key Learnings</h4>
+                    <p>
+                        Data contracts serve as stable interfaces between producers and consumers, preventing breaking changes from propagating downstream. Logical naming decouples business logic from physical storage schemas. Quality rules with hard enforcement (circuit breakers) are essential for ML pipelines and fraud detection systems where bad data has high cost. PII tagging and SLA definitions formalize governance requirements that are otherwise implicit and error-prone.
+                    </p>
+                </div>
+
+                <a href="https://github.com/TejasGupta-27/MLOps-TejasGupta-B22CS093/tree/Assignment2" class="btn" target="_blank">View YAML Contracts</a>
+            </div>
         </div>
 
         <div class="footer">

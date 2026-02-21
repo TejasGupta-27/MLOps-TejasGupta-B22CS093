@@ -1,0 +1,3 @@
+add trainging curve to train.py
+how to make a custom data loader 
+code for making confusion matrix and pushimg it to wand b 

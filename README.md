@@ -2,6 +2,7 @@
 
 ## Links
 - **WandB (Q1):** https://wandb.ai/b22cs093-prom-iit-rajasthan/vit-lora-cifar100
+- **WandB (Q1 Optuna):** https://wandb.ai/b22cs093-prom-iit-rajasthan/vit-lora-cifar100-optuna
 - **WandB (Q2):** https://wandb.ai/b22cs093-prom-iit-rajasthan/adversarial-cifar10
 - **HuggingFace:** https://huggingface.co/Tron2703/vit-lora-cifar100
 
